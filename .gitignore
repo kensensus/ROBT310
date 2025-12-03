@@ -1,0 +1,29 @@
+# Virtual environment
+face_attendance_env/
+venv/
+env/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Sensitive data
+telegram_config.json
+attendance/
+dataset/
+
+# Training data
+trainer.yml
+labels.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
