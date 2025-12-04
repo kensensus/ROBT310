@@ -79,9 +79,9 @@ asyncio.run(send())
                 )
                 
                 if result.returncode == 0:
-                    print(f"[TELEGRAM] ✅ Message sent successfully")
+                    print(f"[TELEGRAM] Message sent successfully")
                 else:
-                    print(f"[TELEGRAM] ❌ Send failed: {result.stderr}")
+                    print(f"[TELEGRAM] Send failed: {result.stderr}")
             finally:
                 # Clean up temp file
                 try:

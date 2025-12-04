@@ -123,7 +123,7 @@ def main():
              font=("Arial", 12),
              bg="#2e2e2e", fg="#aaaaaa").pack(pady=5)
     
-    status_text = "Enabled ✅" if TELEGRAM_CONFIG['enabled'] else "Disabled ❌"
+    status_text = "Enabled" if TELEGRAM_CONFIG['enabled'] else "Disabled"
     tk.Label(info_frame, text=f"Status: {status_text}", 
              font=("Arial", 14, "bold"),
              bg="#2e2e2e", fg="#00ff00" if TELEGRAM_CONFIG['enabled'] else "#ff0000").pack(pady=10)
