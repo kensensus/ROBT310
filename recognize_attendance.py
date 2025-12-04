@@ -91,6 +91,11 @@ class AttendanceTracker:
         else:
             action = "Exit" if self.user_status[name] == "Entry" else "Entry"
         
+        # ✅ FIXED: Don't mark if the status hasn't changed
+        if name in self.user_status and self.user_status[name] == action:
+            print(f"[SKIP] {name} already marked as {action}")
+            return None
+        
         csv_path = os.path.join("attendance", f"{date_str}.csv")
         exists = os.path.exists(csv_path)
         
@@ -226,7 +231,7 @@ def main():
 
         faces = face_cascade.detectMultiScale(
             gray_eq,
-            scaleFactor=1.1,  # Improved detection
+            scaleFactor=1.1,
             minNeighbors=5,
             minSize=(120, 120)
         )
@@ -246,7 +251,7 @@ def main():
         if frame_count % 2 == 0 and len(faces) > 0:
             for (x, y, w, h) in faces:
                 face_roi = gray_eq[y:y+h, x:x+w]
-                face_roi = cv2.resize(face_roi, (150, 150))  # Match training size
+                face_roi = cv2.resize(face_roi, (150, 150))
 
                 label_id, confidence = recognizer.predict(face_roi)
 
@@ -264,16 +269,13 @@ def main():
                         tracker.update_visibility(name, frame_count)
                     
                     if current_person["stable_count"] == required_stable_frames:
-                        # Only mark if not already marked in this session
-                        if name not in marked_this_session:
-                            # Toggle attendance on each new stable detection (Entry -> Exit -> Entry ...)
-                            # Do not rely on disappearance to mark Exit — toggling happens when
-                            # the person next appears and is stably recognized.
-                            action = tracker.mark_attendance(name, confidence)
-                            if action:
-                                notification["text"] = f"{action} Marked: {name}"
-                                notification["time"] = datetime.now()
-                                marked_this_session[name] = True
+                        # ✅ FIXED: Only mark if this person hasn't been marked yet OR their status needs to toggle
+                        # The mark_attendance function now handles duplicate prevention internally
+                        action = tracker.mark_attendance(name, confidence)
+                        if action:  # Only show notification if action was actually taken
+                            notification["text"] = f"{action} Marked: {name}"
+                            notification["time"] = datetime.now()
+                            marked_this_session[name] = True
                 else:
                     if current_person["stable_count"] > 0:
                         current_person["stable_count"] -= 1
@@ -283,9 +285,7 @@ def main():
         # Check for exits (people who left camera view)
         exited_people = tracker.check_exits(frame_count)
         for name in exited_people:
-            # Do NOT auto-mark exit when a user disappears from view.
-            # Instead, clear their marked session so they can be marked
-            # (Entry/Exit toggled) the next time they are positively detected.
+            # Clear marked session so they can be re-detected and toggled properly
             marked_this_session.pop(name, None)
         
         # Draw rectangles
