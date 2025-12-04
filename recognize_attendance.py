@@ -227,6 +227,7 @@ def main():
     frames_without_face = 0
     reset_threshold = 30
     marked_this_session = {}
+    faces = []  # Initialize faces list
     
     # Notification system
     notification = {"text": "", "time": None, "duration": 3}
@@ -239,7 +240,7 @@ def main():
 
         frame_count += 1
         
-        # ✅ OPTIMIZED PREPROCESSING - Removed expensive denoising
+        # OPTIMIZED PREPROCESSING
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         
         # Apply CLAHE for better contrast (fast operation)
@@ -250,7 +251,7 @@ def main():
         gray_eq = cv2.bilateralFilter(gray_eq, 5, 50, 50)
 
         # SMART DETECTION - Only run heavy detection every N frames
-        detect_this_frame = (frame_count % 3 == 0)  # Detect every 3rd frame
+        detect_this_frame = (frame_count % 3 == 0)
         
         if detect_this_frame:
             # First attempt: Standard detection
@@ -271,7 +272,7 @@ def main():
                     minSize=(80, 80),
                     maxSize=(500, 500)
                 )
-        # else: reuse faces from previous frame
+        # else: reuse faces from previous frame (faces list persists)
 
         # Reset if no faces detected for a while
         if len(faces) == 0:
