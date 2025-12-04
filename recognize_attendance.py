@@ -102,14 +102,22 @@ class AttendanceTracker:
                 f.write("date,time,name,action,confidence\n")
             f.write(f"{date_str},{time_str},{name},{action},{confidence:.2f}\n")
         
-        # Update status
+        # Update status BEFORE sending telegram
         self.user_status[name] = action
         
-        # Send Telegram notification on every status change
+        # Send Telegram notification with better error handling
+        print(f"[TELEGRAM] Attempting to send notification for {name} - {action}")
         if self.telegram:
-            message = format_attendance_message(name, action, time_str, confidence)
-            self.telegram.send_sync(message)
-            print(f"[TELEGRAM] Notification sent for {name}")
+            try:
+                message = format_attendance_message(name, action, time_str, confidence)
+                self.telegram.send_sync(message)
+                print(f"[TELEGRAM] ✅ Notification sent successfully for {name} - {action}")
+            except Exception as e:
+                print(f"[TELEGRAM] ❌ Failed to send notification: {e}")
+                import traceback
+                traceback.print_exc()
+        else:
+            print(f"[TELEGRAM] ⚠️ Telegram notifier not initialized")
         
         print(f"[OK] Marked {action}: {name} at {time_str} (conf={confidence:.2f})")
         return action
