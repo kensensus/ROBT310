@@ -259,23 +259,26 @@ def main():
                         current_person["stable_count"] += 1
                         current_person["confidence"] = confidence
                     else:
+                        # ✅ New person detected - reset everything
                         current_person = {"name": name, "confidence": confidence, "stable_count": 1}
                     
                     # Mark person as visible
                     if name != "Unknown":
                         tracker.update_visibility(name, frame_count)
                     
-                    if current_person["stable_count"] == required_stable_frames:
-                        #Only mark if NOT already marked in this continuous session
+                    # ✅ FIXED: Mark when stable AND not already marked in this session
+                    if current_person["stable_count"] >= required_stable_frames:
                         if name not in marked_this_session:
                             action = tracker.mark_attendance(name, confidence)
                             if action:
                                 notification["text"] = f"{action} Marked: {name}"
                                 notification["time"] = datetime.now()
                                 marked_this_session[name] = True
-                        # Reset stable count to prevent repeated marking while still in view
-                        current_person["stable_count"] = 0
+                        # Keep stable_count at required level, don't reset to 0
+                        # This prevents continuous re-marking while person stays visible
+                        current_person["stable_count"] = required_stable_frames
                 else:
+                    # ✅ Face not recognized with good confidence
                     if current_person["stable_count"] > 0:
                         current_person["stable_count"] -= 1
                     if current_person["stable_count"] == 0:
@@ -284,8 +287,11 @@ def main():
         # Check for exits (people who left camera view)
         exited_people = tracker.check_exits(frame_count)
         for name in exited_people:
-            # Clear marked session so they can toggle status next time they appear
+            # ✅ Clear marked session so they can toggle status next time they appear
             marked_this_session.pop(name, None)
+            # ✅ Also reset current_person if it's the person who left
+            if current_person["name"] == name:
+                current_person = {"name": "Unknown", "confidence": 0, "stable_count": 0}
             print(f"[INFO] {name} left camera view - ready for status toggle on return")
 
         # Draw rectangles
