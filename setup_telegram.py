@@ -35,7 +35,7 @@ async def test_connection(Bot, chat_id, token):
         bot = Bot(token=token)
         await bot.send_message(
             chat_id=chat_id,
-            text="✅ Telegram Bot Connected!\nFace Attendance System is ready."
+            text="Telegram Bot Connected!\nFace Attendance System is ready."
         )
         return True, "Test message sent successfully!"
     except Exception as e:
@@ -55,9 +55,9 @@ def test_telegram_connection():
     success, message = asyncio.run(test_connection(Bot, TELEGRAM_CONFIG["chat_id"], TELEGRAM_CONFIG["bot_token"]))
     
     if success:
-        messagebox.showinfo("Success", f"✅ {message}\n\nCheck your Telegram for the test message.")
+        messagebox.showinfo("Success", f"{message}\n\nCheck your Telegram for the test message.")
     else:
-        messagebox.showerror("Error", f"❌ Connection failed:\n{message}")
+        messagebox.showerror("Error", f"Connection failed:\n{message}")
 
 def disable_telegram():
     """Disable Telegram notifications"""
@@ -86,7 +86,7 @@ def main():
              bg="#1e1e1e", fg="white").pack(pady=30)
     
     if not TELEGRAM_AVAILABLE:
-        tk.Label(root, text="⚠️ Telegram Module Not Available", 
+        tk.Label(root, text="Telegram Module Not Available", 
                 font=("Arial", 20, "bold"),
                 bg="#1e1e1e", fg="#ff0000").pack(pady=30)
         
@@ -149,7 +149,7 @@ def main():
               command=root.destroy).grid(row=1, column=1, padx=10, pady=10)
     
     # Instructions at bottom
-    tk.Label(root, text="💡 To change bot token or chat ID, edit setup_telegram.py", 
+    tk.Label(root, text="To change bot token or chat ID, edit setup_telegram.py", 
              font=("Arial", 10),
              bg="#1e1e1e", fg="#888888").pack(side=tk.BOTTOM, pady=10)
     

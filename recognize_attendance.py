@@ -7,7 +7,7 @@ from telegram_bot import TelegramNotifier, format_attendance_message, load_confi
 # Load label mapping
 def load_labels(path="labels.json"):
     if not os.path.exists(path):
-        print("❌ labels.json not found. Run train_lbph.py first.")
+        print("[ERROR] labels.json not found. Run train_lbph.py first.")
         return None
     with open(path, "r") as f:
         id_to_label = json.load(f)
@@ -31,15 +31,15 @@ class AttendanceTracker:
                     
                     if token and chat_id:
                         self.telegram = TelegramNotifier(token, chat_id)
-                        print("✅ Telegram notifications enabled")
+                        print("[OK] Telegram notifications enabled")
                     else:
-                        print("⚠️ Telegram config missing token or chat_id")
+                        print("[WARNING] Telegram config missing token or chat_id")
                 except Exception as e:
-                    print(f"⚠️ Failed to initialize Telegram: {e}")
+                    print(f"[WARNING] Failed to initialize Telegram: {e}")
             else:
-                print("⚠️ Telegram not enabled in config or config not found")
+                print("[WARNING] Telegram not enabled in config or config not found")
         elif enable_telegram and not TELEGRAM_AVAILABLE:
-            print("⚠️ python-telegram-bot not installed. Telegram notifications disabled.")
+            print("[WARNING] python-telegram-bot not installed. Telegram notifications disabled.")
     
     def load_today_status(self):
         """Load today's attendance to restore status"""
@@ -123,9 +123,9 @@ class AttendanceTracker:
             message = format_attendance_message(name, action, time_str, confidence)
             self.telegram.send_sync(message)
             self.user_status[name]["last_notified"] = now
-            print(f"📱 Telegram notification sent for {name}")
+            print(f"[TELEGRAM] Notification sent for {name}")
         
-        print(f"✅ Marked {action}: {name} at {time_str} (conf={confidence:.2f})")
+        print(f"[OK] Marked {action}: {name} at {time_str} (conf={confidence:.2f})")
         return action
     
     def get_status(self, name):
@@ -137,12 +137,12 @@ class AttendanceTracker:
 def main():
     # Load trained LBPH model
     if not os.path.exists("trainer.yml"):
-        print("❌ trainer.yml not found. Run train_lbph.py first.")
+        print("[ERROR] trainer.yml not found. Run train_lbph.py first.")
         return
 
     recognizer = cv2.face.LBPHFaceRecognizer_create()
     recognizer.read("trainer.yml")
-    print("✅ Loaded LBPH model.")
+    print("[OK] Loaded LBPH model.")
 
     id_to_label = load_labels("labels.json")
     if id_to_label is None:
@@ -153,10 +153,10 @@ def main():
 
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
-        print("❌ Could not open camera.")
+        print("[ERROR] Could not open camera.")
         return
 
-    print("✅ Attendance system running. Press 'q' to quit.")
+    print("[OK] Attendance system running. Press 'q' to quit.")
     
     tracker = AttendanceTracker(cooldown_minutes=0.5, enable_telegram=True)  # 30 seconds cooldown
 
@@ -177,7 +177,7 @@ def main():
     while True:
         ret, frame = cap.read()
         if not ret:
-            print("❌ Failed to grab frame")
+            print("[ERROR] Failed to grab frame")
             break
 
         frame_count += 1

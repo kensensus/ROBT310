@@ -60,15 +60,15 @@ def get_images_and_labels(dataset_dir="dataset"):
 def main():
     dataset_dir = "dataset"
     if not os.path.exists(dataset_dir):
-        print("❌ Dataset folder not found. Run collect_faces.py first.")
+        print("Dataset folder not found. Run collect_faces.py first.")
         return
 
     faces, ids, label_to_id = get_images_and_labels(dataset_dir)
     if len(faces) == 0:
-        print("❌ No faces found in dataset. Collect some first.")
+        print("No faces found in dataset. Collect some first.")
         return
 
-    print(f"✅ Found {len(faces)} face images belonging to {len(label_to_id)} people.")
+    print(f"Found {len(faces)} face images belonging to {len(label_to_id)} people.")
     
     # Optimized LBPH for Raspberry Pi
     recognizer = cv2.face.LBPHFaceRecognizer_create(
@@ -78,19 +78,19 @@ def main():
         grid_y=8
     )
     
-    print("⏳ Training... (this may take 1-2 minutes)")
+    print("Training... (this may take 1-2 minutes)")
     recognizer.train(faces, ids)
 
     # Save model
     recognizer.write("trainer.yml")
-    print("✅ Saved trained model to trainer.yml")
+    print("Saved trained model to trainer.yml")
 
     # Save label mapping (id -> name)
     id_to_label = {str(v): k for k, v in label_to_id.items()}
     with open("labels.json", "w") as f:
         json.dump(id_to_label, f)
 
-    print("✅ Saved labels to labels.json")
+    print("Saved labels to labels.json")
     print("Training complete.")
 
 if __name__ == "__main__":

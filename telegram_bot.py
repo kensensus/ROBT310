@@ -53,7 +53,7 @@ def send_attendance_notification(name, action, time, confidence):
     chat_id = config.get("chat_id")
     
     if not token or not chat_id:
-        print("⚠️ Telegram bot not configured properly")
+        print("Telegram bot not configured properly")
         return
     
     try:

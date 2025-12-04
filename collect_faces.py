@@ -10,10 +10,10 @@ def main():
         name = sys.argv[2].strip()
     
     if not name:
-        name = input("Enter person's name (no spaces is best, e.g. alice, bob_k): ").strip()
+        name = input("Enter students's name (no spaces NameSurname format): ").strip()
     
     if not name:
-        print("❌ Name cannot be empty.")
+        print("Name cannot be empty.")
         return
 
     # Make sure dataset folder exists
@@ -27,11 +27,11 @@ def main():
     # Open camera
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
-        print("❌ Could not open camera.")
+        print("Could not open camera.")
         return
 
     # Give user time to setup
-    print(f"✅ Collecting faces for: {name}")
+    print(f"Collecting faces for: {name}")
     print("Position yourself in front of the camera.")
     print("Starting in 5 seconds...")
     
@@ -39,7 +39,7 @@ def main():
         print(f"{i}...")
         time.sleep(1)
     
-    print("✅ Starting collection now!")
+    print("Starting collection now!")
 
     count = 0
     target_count = 100  # Increased for better accuracy
@@ -48,7 +48,7 @@ def main():
     while True:
         ret, frame = cap.read()
         if not ret:
-            print("❌ Failed to grab frame")
+            print("Failed to grab frame")
             break
 
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -92,7 +92,7 @@ def main():
 
     cap.release()
     cv2.destroyAllWindows()
-    print(f"✅ Done. Collected {count} images for {name}.")
+    print(f"Done. Collected {count} images for {name}.")
     print("Please run 'Train System' to update the model.")
     
     input("Press Enter to exit...")

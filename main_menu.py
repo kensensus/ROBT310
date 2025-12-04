@@ -53,7 +53,7 @@ def setup_telegram():
 def exit_application(root):
     """Properly exit the application with confirmation"""
     if messagebox.askyesno("Exit", "Are you sure you want to exit the Face Attendance System?"):
-        print("👋 Exiting Face Attendance System...")
+        print("Exiting Face Attendance System...")
         root.destroy()
         sys.exit(0)
 

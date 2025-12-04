@@ -5,19 +5,18 @@ def main():
     cascade_path = "haarcascade_frontalface_default.xml"
     face_cascade = cv2.CascadeClassifier(cascade_path)
 
-    # Open camera
     cap = cv2.VideoCapture(0)
 
     if not cap.isOpened():
-        print("❌ Could not open camera.")
+        print("Could not open camera.")
         return
 
-    print("✅ Face detection running. Press 'q' to quit.")
+    print("Face detection running. Press 'q' to quit.")
 
     while True:
         ret, frame = cap.read()
         if not ret:
-            print("❌ Failed to grab frame")
+            print("Failed to grab frame")
             break
 
         # --- IMAGE PROCESSING STEPS ---
@@ -47,7 +46,7 @@ def main():
 
     cap.release()
     cv2.destroyAllWindows()
-    print("👋 Exiting…")
+    print("Exiting…")
 
 if __name__ == "__main__":
     main()
