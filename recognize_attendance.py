@@ -205,6 +205,12 @@ def main():
     if not cap.isOpened():
         print("[ERROR] Could not open camera.")
         return
+    
+    # ✅ Improve camera settings for better image quality
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+    cap.set(cv2.CAP_PROP_FPS, 30)
+    cap.set(cv2.CAP_PROP_AUTOFOCUS, 1)
 
     print("[OK] Attendance system running. Press 'q' to quit.")
     
@@ -214,13 +220,13 @@ def main():
     cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
     cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
-    threshold = 60
+    threshold = 70  # ✅ Increased threshold for more lenient matching
     current_person = {"name": "Unknown", "confidence": 0, "stable_count": 0}
-    required_stable_frames = 10
+    required_stable_frames = 8  # ✅ Reduced from 10 for faster detection
     frame_count = 0
     frames_without_face = 0
     reset_threshold = 30
-    marked_this_session = {}  # Track who has been marked in this detection session
+    marked_this_session = {}
     
     # Notification system
     notification = {"text": "", "time": None, "duration": 3}
@@ -232,15 +238,38 @@ def main():
             break
 
         frame_count += 1
+        
+        # ✅ IMPROVED PREPROCESSING
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        gray_eq = cv2.equalizeHist(gray)
+        
+        # Apply CLAHE (Contrast Limited Adaptive Histogram Equalization) for better contrast
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+        gray_eq = clahe.apply(gray)
+        
+        # Denoise the image
+        gray_eq = cv2.fastNlMeansDenoising(gray_eq, None, 10, 7, 21)
 
+        # ✅ MULTI-SCALE FACE DETECTION - Try different parameters
+        faces = []
+        
+        # First attempt: Standard detection
         faces = face_cascade.detectMultiScale(
             gray_eq,
-            scaleFactor=1.1,
-            minNeighbors=5,
-            minSize=(120, 120)
+            scaleFactor=1.05,  # Smaller steps for better detection
+            minNeighbors=4,    # Less strict
+            minSize=(100, 100),
+            maxSize=(400, 400)
         )
+        
+        # If no faces found, try with relaxed parameters
+        if len(faces) == 0:
+            faces = face_cascade.detectMultiScale(
+                gray_eq,
+                scaleFactor=1.1,
+                minNeighbors=3,
+                minSize=(80, 80),
+                maxSize=(500, 500)
+            )
 
         # Reset if no faces detected for a while
         if len(faces) == 0:
@@ -254,12 +283,23 @@ def main():
         color = (0, 255, 0) if name_display != "Unknown" else (0, 0, 255)
         confidence_display = f"{current_person['confidence']:.1f}" if current_person['confidence'] > 0 else "-"
 
-        if frame_count % 2 == 0 and len(faces) > 0:
-            for (x, y, w, h) in faces:
-                face_roi = gray_eq[y:y+h, x:x+w]
-                face_roi = cv2.resize(face_roi, (150, 150))
+        # Process every frame (removed frame_skip)
+        if len(faces) > 0:
+            # Take the largest face (closest to camera)
+            faces = sorted(faces, key=lambda f: f[2] * f[3], reverse=True)
+            x, y, w, h = faces[0]
+            
+            # Check face quality before recognition
+            face_roi = gray_eq[y:y+h, x:x+w]
+            
+            # Calculate face quality metrics
+            laplacian_var = cv2.Laplacian(face_roi, cv2.CV_64F).var()
+            
+            # Only process if face quality is good enough
+            if laplacian_var > 50:  # Blur detection threshold
+                face_roi_resized = cv2.resize(face_roi, (150, 150))
 
-                label_id, confidence = recognizer.predict(face_roi)
+                label_id, confidence = recognizer.predict(face_roi_resized)
 
                 if confidence < threshold:
                     name = id_to_label.get(str(label_id), "Unknown")
@@ -268,14 +308,11 @@ def main():
                         current_person["stable_count"] += 1
                         current_person["confidence"] = confidence
                     else:
-                        # ✅ New person detected - reset everything
                         current_person = {"name": name, "confidence": confidence, "stable_count": 1}
                     
-                    # Mark person as visible
                     if name != "Unknown":
                         tracker.update_visibility(name, frame_count)
                     
-                    # ✅ FIXED: Mark when stable AND not already marked in this session
                     if current_person["stable_count"] >= required_stable_frames:
                         if name not in marked_this_session:
                             print(f"[DEBUG] Marking {name} - marked_this_session: {list(marked_this_session.keys())}")
@@ -283,38 +320,39 @@ def main():
                             if action:
                                 notification["text"] = f"{action} Marked: {name}"
                                 notification["time"] = datetime.now()
-                                marked_this_session[name] = action  # Store the action, not just True
+                                marked_this_session[name] = action
                                 print(f"[DEBUG] Added {name} to marked_this_session with action {action}")
                         else:
                             print(f"[DEBUG] {name} already in marked_this_session with action {marked_this_session[name]}")
-                        # Keep stable_count at required level, don't reset to 0
                         current_person["stable_count"] = required_stable_frames
-
                 else:
-                    # ✅ Face not recognized with good confidence
                     if current_person["stable_count"] > 0:
                         current_person["stable_count"] -= 1
                     if current_person["stable_count"] == 0:
                         current_person = {"name": "Unknown", "confidence": 0, "stable_count": 0}
+            else:
+                # Face too blurry
+                cv2.putText(frame, "Face too blurry - move closer", (x, y-10),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
         
-        # Check for exits (people who left camera view)
+        # Check for exits
         exited_people = tracker.check_exits(frame_count)
         for name in exited_people:
-            # ✅ Clear marked session so they can toggle status next time they appear
             if name in marked_this_session:
                 print(f"[DEBUG] Removing {name} from marked_this_session (was {marked_this_session[name]})")
                 marked_this_session.pop(name, None)
-            # ✅ Also reset current_person if it's the person who left
             if current_person["name"] == name:
                 current_person = {"name": "Unknown", "confidence": 0, "stable_count": 0}
                 print(f"[DEBUG] Reset current_person for {name}")
             print(f"[INFO] {name} left camera view - ready for status toggle on return")
 
-        # Draw rectangles
+        # Draw enhanced rectangles with quality indicator
         for (x, y, w, h) in faces:
             cv2.rectangle(frame, (x, y), (x + w, y + h), color, 3)
+            # Show detection zone
+            cv2.rectangle(frame, (x-5, y-5), (x + w + 5, y + h + 5), (255, 255, 0), 1)
 
-        # Status - only show if person is detected
+        # Status display
         if name_display != "Unknown":
             status = tracker.get_status(name_display)
             status_text = f"Status: {status if status else 'Not Present'}"
@@ -322,6 +360,12 @@ def main():
                 status_text = f"Detecting... ({current_person['stable_count']}/{required_stable_frames})"
         else:
             status_text = "Status: Waiting for face..."
+
+        # Add helpful guidance text
+        if len(faces) == 0:
+            cv2.putText(frame, "No face detected - Position yourself in frame", 
+                       (50, frame.shape[0]//2),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
 
         # Top banner
         cv2.rectangle(frame, (0, 0), (frame.shape[1], 80), (0, 0, 0), -1)

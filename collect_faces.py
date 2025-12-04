@@ -29,10 +29,16 @@ def main():
     if not cap.isOpened():
         print("Could not open camera.")
         return
+    
+    # Optimize camera settings
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+    cap.set(cv2.CAP_PROP_FPS, 30)
 
     # Give user time to setup
     print(f"Collecting faces for: {name}")
     print("Position yourself in front of the camera.")
+    print("Tips: Good lighting, face the camera directly, vary expressions slightly")
     print("Starting in 5 seconds...")
     
     for i in range(5, 0, -1):
@@ -42,8 +48,9 @@ def main():
     print("Starting collection now!")
 
     count = 0
-    target_count = 100  # Increased for better accuracy
+    target_count = 100
     frame_skip = 0
+    skipped_blurry = 0
 
     while True:
         ret, frame = cap.read()
@@ -52,15 +59,27 @@ def main():
             break
 
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        gray_eq = cv2.equalizeHist(gray)
+        
+        # Use CLAHE for better preprocessing
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+        gray_eq = clahe.apply(gray)
         gray_eq = cv2.GaussianBlur(gray_eq, (5, 5), 0)
 
+        # Multi-scale detection
         faces = face_cascade.detectMultiScale(
             gray_eq,
-            scaleFactor=1.1,
-            minNeighbors=6,
-            minSize=(80, 80)
+            scaleFactor=1.05,
+            minNeighbors=5,
+            minSize=(100, 100)
         )
+        
+        if len(faces) == 0:
+            faces = face_cascade.detectMultiScale(
+                gray_eq,
+                scaleFactor=1.1,
+                minNeighbors=4,
+                minSize=(80, 80)
+            )
 
         for (x, y, w, h) in faces:
             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
@@ -70,7 +89,17 @@ def main():
                 continue
 
             face_roi = gray_eq[y:y+h, x:x+w]
-            face_roi = cv2.resize(face_roi, (150, 150))  # Larger size for better accuracy
+            
+            # Check face quality before saving
+            laplacian_var = cv2.Laplacian(face_roi, cv2.CV_64F).var()
+            
+            if laplacian_var < 50:
+                skipped_blurry += 1
+                cv2.putText(frame, "Too blurry - hold still", (x, y-10),
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+                continue
+            
+            face_roi = cv2.resize(face_roi, (150, 150))
 
             count += 1
             filename = os.path.join(dataset_dir, f"{name}_{count}.jpg")
@@ -81,7 +110,10 @@ def main():
         cv2.putText(frame, f"Progress: {progress}% ({count}/{target_count})", (10, 30),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
         
-        cv2.putText(frame, "Press 'q' to stop early", (10, 60),
+        cv2.putText(frame, f"Skipped blurry: {skipped_blurry}", (10, 60),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 1)
+        
+        cv2.putText(frame, "Press 'q' to stop early", (10, 90),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1)
 
         cv2.imshow("Collecting faces", frame)
@@ -92,7 +124,7 @@ def main():
 
     cap.release()
     cv2.destroyAllWindows()
-    print(f"Done. Collected {count} images for {name}.")
+    print(f"Done. Collected {count} images for {name} (skipped {skipped_blurry} blurry images).")
     print("Please run 'Train System' to update the model.")
     
     input("Press Enter to exit...")
